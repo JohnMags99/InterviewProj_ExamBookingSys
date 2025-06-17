@@ -1,16 +1,20 @@
 <script setup lang="ts">
 import axios from "axios";
 
-const register = async () => {
-  console.log("Registering...")
+axios.defaults.withCredentials = true;
+axios.defaults.withXSRFToken = true;
+axios.defaults.baseURL = "http://localhost:8000";
 
+const register = async () => {
+  console.log("Registering...");
+  await axios.get("/sanctum/csrf-cookie",);
   try {
-    const response = await axios.post('http://localhost:3000/api/register',
+    const response = await axios.post("/api/register",
         {
-          name: "John Doe",
-          email: "test@test.ie",
-          password: "password",
-          password_confirmation: "password",
+          "name": "John Doe",
+          "email": "test@test.ie",
+          "password": "password",
+          "password_confirmation": "password",
         }
     );
     console.log(response.data);
