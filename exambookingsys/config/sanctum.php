@@ -19,8 +19,8 @@ return [
         '%s%s',
         'localhost,localhost:3000,127.0.0.1,127.0.0.1:8000,::1',
         Sanctum::currentApplicationUrlWithPort(),
-        env('FRONTEND_URL') ? ',' .parse_url(env('FRONTEND_URL'), PHP_URL_HOST) : ''
-        // Sanctum::currentRequestHost(),
+        env('FRONTEND_URL') ? ',' . parse_url(env('FRONTEND_URL'), PHP_URL_HOST) : ''
+    // Sanctum::currentRequestHost(),
     ))),
 
     /*
@@ -81,5 +81,14 @@ return [
         'encrypt_cookies' => Illuminate\Cookie\Middleware\EncryptCookies::class,
         'validate_csrf_token' => Illuminate\Foundation\Http\Middleware\ValidateCsrfToken::class,
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Sanctum Route prefix
+    |--------------------------------------------------------------------------
+    |
+    */
+
+    'prefix' => 'api',
 
 ];
