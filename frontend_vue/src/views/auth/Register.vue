@@ -2,7 +2,10 @@
 import axiosInstance from "@/lib/axios";
 import {reactive, ref, inject} from "vue";
 
-const authStat = inject('auth');
+const emailTaken = ref(false);
+const passwordMismatch = ref(false);
+const shortPassword = ref(false);
+const passport = ref(File);
 
 interface RegisterUserForm {
   givenName: string;
@@ -40,46 +43,85 @@ const authForm = reactive<RegisterAuthForm>({
   password_confirmation: "",
 });
 
-const passport = ref<File | null>(null);
 
-const onFileUpload = (e : Event) => {
-  const target = e.target as HTMLInputElement;
-  if (target.files && target.files.length > 0) {
-    passport.value = target.files[0];
-  }
+
+const onPassportUpload = (event) => {
+  passport.value = event.target.files[0];
 };
 
+const submitPassport = async (email, name) => {
+  let formData = new FormData();
+  formData.append('file', passport.value);
+  formData.append('email', email);
+  formData.append('name', name);
+
+  try {
+    const response = await axiosInstance.post('/api/uploadPassport', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data'
+      }
+    });
+  } catch (error) {
+    alert(error);
+  }
+}
+
 const register = async (payload: RegisterAuthForm) => {
-  //if no file uploaded kill process
-  if (!passport.value) return;
+  emailTaken.value = false;
+  passwordMismatch.value = false;
+  shortPassword.value = false;
 
   //Add email and passport to users personal data
   const userData = new FormData();
-  userData.append("email",payload.email)
+  userData.append("email", payload.email)
   Object.entries(userForm).forEach(([key, value]) => {
     userData.append(key, value);
   })
-  //userData.append("passport",passport.value);
 
   //Take name from given and family name
-  payload.name = userForm.givenName+" "+userForm.familyName;
+  payload.name = userForm.givenName + " " + userForm.familyName;
+
   try {
-    const response = await axiosInstance.post("/api/register", payload);
-    console.log(response.data);
+    //register user
+    try {
+      const response = await axiosInstance.post("/api/register", payload);
+      console.log(response.data);
+
+      //store data if registration successful
+      try {
+        const response = await axiosInstance.post("/api/storeData", userData);
+        await submitPassport(payload.email, payload.name)
+        console.log(response.data);
+        location.reload();
+      } catch (error) {
+        console.error(error);
+      }
+    } catch (error) {
+      console.error(error);
+      //Handle register errors. Alerts pop up on screen if the error includes the below
+      if (error.response.data.errors.email.includes("The email has already been taken.")) {
+        emailTaken.value = true;
+      }
+
+      if (error.response.data.errors.password.includes("The password field confirmation does not match.")) {
+        passwordMismatch.value = true;
+      }
+
+      if (error.response.data.errors.password.includes("The password field must be at least 8 characters.")) {
+        shortPassword.value = true;
+      }
+    }
   } catch (error) {
-    console.error(error);
-  }
-  try {
-    const response = await axiosInstance.post("/api/storeData", userData);
-    console.log(response.data);
-  } catch (error) {
-    console.error(error);
+    console.log(error);
   }
 };
 </script>
 <template>
+
   <h1 class="text-3xl text-center text-slate-200 p-4">Register</h1>
-  <form @submit.prevent="register(authForm)" class="max-w-sm mx-auto p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
+
+  <form @submit.prevent="register(authForm)"
+        class="max-w-sm mx-auto p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">
     <div class="grid gap-6 mb-6 md:grid-cols-2">
       <div>
         <label for="givenName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Given name</label>
@@ -87,12 +129,16 @@ const register = async (payload: RegisterAuthForm) => {
                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                placeholder="First" required/>
       </div>
+
+
       <div>
         <label for="familyName" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Family name</label>
         <input type="text" id="familyName" v-model="userForm.familyName"
                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
                placeholder="Last" required/>
       </div>
+
+
       <div>
         <label for="gender" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Gender</label>
         <select id="gender" v-model="userForm.gender"
@@ -102,14 +148,21 @@ const register = async (payload: RegisterAuthForm) => {
           <option value="na">Prefer not to say</option>
         </select>
       </div>
+
+
       <div>
         <label for="dateOB" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Date of birth</label>
         <input type="text" id="dateOB" v-model="userForm.dateOB"
-               pattern="\d{1,2}/\d{1,2}/\d{4}" class="datepicker bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" name="date" placeholder="dd/mm/yyyy"/>
+               pattern="\d{1,2}/\d{1,2}/\d{4}"
+               class="datepicker bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               name="date" placeholder="dd/mm/yyyy"/>
       </div>
+
+
       <div>
         <label for="prefix" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Phone Prefix</label>
-        <select id="prefix" v-model="userForm.prefix" class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
+        <select id="prefix" v-model="userForm.prefix"
+                class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500">
           <option selected>Choose Prefix</option>
           <!--List of prefixes found here https://gist.github.com/neno-giscloud/8c39673e2d9731ca53fbcc47b8f72258-->
           <option value="93">Afghanistan (+93)</option>
@@ -354,11 +407,16 @@ const register = async (payload: RegisterAuthForm) => {
           <option value="263">Zimbabwe (+263)</option>
         </select>
       </div>
+
+
       <div>
         <label for="phone" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Phone number</label>
         <input type="tel" id="phone" v-model="userForm.phone"
-               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required/>
+               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               required/>
       </div>
+
+
       <div>
         <label for="countries" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Nationality</label>
         <select id="countries" v-model="userForm.countryOB"
@@ -568,7 +626,8 @@ const register = async (payload: RegisterAuthForm) => {
           <option value="Solomon Islands">Solomon Islands</option>
           <option value="Somalia">Somalia</option>
           <option value="South Africa">South Africa</option>
-          <option value="South Georgia and The South Sandwich Islands">South Georgia and The South Sandwich Islands</option>
+          <option value="South Georgia and The South Sandwich Islands">South Georgia and The South Sandwich Islands
+          </option>
           <option value="South Sudan">South Sudan</option>
           <option value="Spain">Spain</option>
           <option value="Sri Lanka">Sri Lanka</option>
@@ -613,71 +672,80 @@ const register = async (payload: RegisterAuthForm) => {
           <option value="Zimbabwe">Zimbabwe</option>
         </select>
       </div>
+
+
       <div>
-        <label for="eircode" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Current Post Code</label>
+        <label for="eircode" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Current Post
+          Code</label>
         <input type="text" id="eircode" v-model="userForm.eircode"
-               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" placeholder="Postcode/Eircode" required/>
+               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+               placeholder="Postcode/Eircode" required/>
       </div>
     </div>
+
+
     <div class="mb-6">
-      <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="file_input">Upload Passport</label>
-      <input class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400" aria-describedby="file_input_help" id="file_input" type="file" accept="image/*,.pdf" @change="onFileUpload" required>
-      <p v-if="passport">Selected file : {{ passport.name }}}</p>
-      <p class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="file_input_help">PNG, JPG or PDF</p>
+      <label class="block mb-2 text-sm font-medium text-gray-900 dark:text-white" for="file_input">Upload
+        Passport</label>
+      <input
+          class="block w-full text-sm text-gray-900 border border-gray-300 rounded-lg cursor-pointer bg-gray-50 dark:text-gray-400 focus:outline-none dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400"
+          aria-describedby="file_input_help" id="file_input" type="file" accept="image/*,.pdf"
+          @change="onPassportUpload"
+          required>
+      <p class="mt-1 text-sm text-gray-500 dark:text-gray-300" id="file_input_help">jpg, jpeg, png, pdf | max:2048</p>
     </div>
+
+
+    <div v-show="emailTaken" class="mb-6">
+      <div class="max-w-sm mx-auto p-4 items-center bg-red-500 text-white text-sm font-bold px-4 py-3" role="alert">
+        <p>Email already registered.</p><br>
+        <a href="/"><b>Click here to login instead</b></a>
+      </div>
+    </div>
+
+
     <div class="mb-6">
       <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email address</label>
       <input type="email" id="email" v-model="authForm.email"
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required/>
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+             required/>
     </div>
+
+
+    <div v-show="passwordMismatch" class="mb-6">
+      <div class="max-w-sm mx-auto p-4 items-center bg-red-500 text-white text-sm font-bold px-4 py-3" role="alert">
+        <p>Passwords do not match.</p><br>
+      </div>
+    </div>
+
+
+    <div v-show="shortPassword" class="mb-6">
+      <div class="max-w-sm mx-auto p-4 items-center bg-red-500 text-white text-sm font-bold px-4 py-3" role="alert">
+        <p>Password is too short. It must be at least 8 characters.</p><br>
+      </div>
+    </div>
+
+
     <div class="mb-6">
       <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>
       <input type="password" id="password" v-model="authForm.password"
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required/>
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+             required/>
     </div>
+
+
     <div class="mb-6">
       <label for="password_confirmation" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Confirm
         password</label>
       <input type="password" id="password_confirmation" v-model="authForm.password_confirmation"
-             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500" required/>
+             class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"
+             required/>
     </div>
+
+
     <button type="submit"
             class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">
       Submit
     </button>
   </form>
 </template>
-
-
-<!--  <h1 class="text-3xl text-slate-200 p-4">Register</h1>-->
-<!--  <form @submit.prevent="register(form)" class="max-w-sm mx-auto p-4 bg-white rounded-lg shadow-md dark:bg-gray-800">-->
-<!--      <div class="mb-5">-->
-<!--        <label for="name" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Name</label>-->
-<!--        <input type="name" id="name" v-model="form.givenName"-->
-<!--               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"-->
-<!--               placeholder="name" required/>-->
-<!--      </div>-->
-<!--      <div class="mb-5">-->
-<!--        <label for="email" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Email</label>-->
-<!--        <input type="email" id="email" v-model="form.email"-->
-<!--               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"-->
-<!--               placeholder="email@domain.ie" required/>-->
-<!--      </div>-->
-<!--      <div class="mb-5">-->
-<!--        <label for="password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Password</label>-->
-<!--        <input type="password" id="password" v-model="form.password"-->
-<!--               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"-->
-<!--               required/>-->
-<!--      </div>-->
-<!--      <div class="mb-5">-->
-<!--        <label for="confirm password" class="block mb-2 text-sm font-medium text-gray-900 dark:text-white">Confirm-->
-<!--          Password</label>-->
-<!--        <input type="password" id="password" v-model="form.password_confirmation"-->
-<!--               class="bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-blue-500 focus:border-blue-500 block w-full p-2.5 dark:bg-gray-700 dark:border-gray-600 dark:placeholder-gray-400 dark:text-white dark:focus:ring-blue-500 dark:focus:border-blue-500"-->
-<!--               required/>-->
-<!--      </div>-->
-<!--      <button type="submit"-->
-<!--              class="text-white bg-blue-700 hover:bg-blue-800 focus:ring-4 focus:outline-none focus:ring-blue-300 font-medium rounded-lg text-sm w-full sm:w-auto px-5 py-2.5 text-center dark:bg-blue-600 dark:hover:bg-blue-700 dark:focus:ring-blue-800">-->
-<!--        Register-->
-<!--      </button>-->
-<!--  </form>-->

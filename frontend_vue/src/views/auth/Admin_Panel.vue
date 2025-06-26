@@ -106,6 +106,7 @@ loadDeniedUsers();
 <template>
   <div class="relative overflow-x-auto">
     <h1 class="text-3xl font-bold text-center text-slate-200 p-4">Pending Users</h1>
+
     <table class="w-full text-sm text-left rtl:text-right text-gray-500 dark:text-gray-400">
       <thead class="text-xs text-gray-700 uppercase bg-gray-50 dark:bg-gray-700 dark:text-gray-400">
       <tr>
@@ -129,9 +130,6 @@ loadDeniedUsers();
         </th>
         <th scope="col" class="px-6 py-3">
           Eircode
-        </th>
-        <th scope="col" class="px-6 py-3">
-          Phone Prefix
         </th>
         <th scope="col" class="px-6 py-3">
           Phone Number
@@ -162,9 +160,13 @@ loadDeniedUsers();
         <td class="px-6 py-4">{{ user.dateOB }}</td>
         <td class="px-6 py-4">{{ user.countryOB }}</td>
         <td class="px-6 py-4">{{ user.eircode }}</td>
-        <td class="px-6 py-4">{{ user.prefix }}</td>
-        <td class="px-6 py-4">{{ user.phone }}</td>
-        <td class="px-6 py-4">{{ user.passport }}</td>
+        <td class="px-6 py-4">({{ user.prefix }}) {{ user.phone }}</td>
+        <td class="px-6 py-4">
+          <td class="px-6 py-4">
+            <a :href="`http://localhost:8000/storage/passports/${encodeURIComponent(user.email)}/${user.passport_name}`" target="_blank"
+               class="font-medium text-blue-600 dark:text-blue-500 hover:underline">View ID</a>
+          </td>
+        </td>
         <td class="px-6 py-4">{{ user.role }}</td>
         <td class="px-6 py-4">Pending</td>
         <td class="px-6 py-4">
@@ -203,13 +205,7 @@ loadDeniedUsers();
           Eircode
         </th>
         <th scope="col" class="px-6 py-3">
-          Phone Prefix
-        </th>
-        <th scope="col" class="px-6 py-3">
           Phone Number
-        </th>
-        <th scope="col" class="px-6 py-3">
-          Passport
         </th>
         <th scope="col" class="px-6 py-3">
           Role
@@ -232,9 +228,7 @@ loadDeniedUsers();
         <td class="px-6 py-4">{{ user.dateOB }}</td>
         <td class="px-6 py-4">{{ user.countryOB }}</td>
         <td class="px-6 py-4">{{ user.eircode }}</td>
-        <td class="px-6 py-4">{{ user.prefix }}</td>
-        <td class="px-6 py-4">{{ user.phone }}</td>
-        <td class="px-6 py-4">{{ user.passport }}</td>
+        <td class="px-6 py-4">({{ user.prefix }}) {{ user.phone }}</td>
         <td class="px-6 py-4">{{ user.role }}</td>
         <td class="px-6 py-4">Registered</td>
         <td class="px-6 py-4">
@@ -271,13 +265,7 @@ loadDeniedUsers();
           Eircode
         </th>
         <th scope="col" class="px-6 py-3">
-          Phone Prefix
-        </th>
-        <th scope="col" class="px-6 py-3">
           Phone Number
-        </th>
-        <th scope="col" class="px-6 py-3">
-          Passport
         </th>
         <th scope="col" class="px-6 py-3">
           Role
@@ -303,9 +291,7 @@ loadDeniedUsers();
         <td class="px-6 py-4">{{ user.dateOB }}</td>
         <td class="px-6 py-4">{{ user.countryOB }}</td>
         <td class="px-6 py-4">{{ user.eircode }}</td>
-        <td class="px-6 py-4">{{ user.prefix }}</td>
-        <td class="px-6 py-4">{{ user.phone }}</td>
-        <td class="px-6 py-4">{{ user.passport }}</td>
+        <td class="px-6 py-4">({{ user.prefix }}) {{ user.phone }}</td>
         <td class="px-6 py-4">{{ user.role }}</td>
         <td class="px-6 py-4">Locked</td>
         <td class="px-6 py-4">
@@ -342,13 +328,7 @@ loadDeniedUsers();
           Eircode
         </th>
         <th scope="col" class="px-6 py-3">
-          Phone Prefix
-        </th>
-        <th scope="col" class="px-6 py-3">
           Phone Number
-        </th>
-        <th scope="col" class="px-6 py-3">
-          Passport
         </th>
         <th scope="col" class="px-6 py-3">
           Role
@@ -374,9 +354,7 @@ loadDeniedUsers();
         <td class="px-6 py-4">{{ user.dateOB }}</td>
         <td class="px-6 py-4">{{ user.countryOB }}</td>
         <td class="px-6 py-4">{{ user.eircode }}</td>
-        <td class="px-6 py-4">{{ user.prefix }}</td>
-        <td class="px-6 py-4">{{ user.phone }}</td>
-        <td class="px-6 py-4">{{ user.passport }}</td>
+        <td class="px-6 py-4">({{ user.prefix }}) {{ user.phone }}</td>
         <td class="px-6 py-4">{{ user.role }}</td>
         <td class="px-6 py-4">Denied</td>
         <td class="px-6 py-4">
